@@ -1,5 +1,10 @@
 import random
 from draw_field import print_game_grid
+import os
+import pandas as pd
+import uuid
+
+repo_root = os.path.abspath(os.path.join(__file__, os.pardir))
 
 
 class Game:
@@ -12,6 +17,10 @@ class Game:
         self.gen_field = self.__generate_field()
         self.is_lose = False
         self.is_win = False
+        self.save_dir = os.path.join(repo_root, '.saves')
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+            os.chmod(self.save_dir, 777)
 
     def __generate_mines_pos(self, mines, size):
         mines_pos = []
@@ -131,6 +140,14 @@ class Game:
                     self.flags += 1
                 field[row][col]['visible'] = True
 
+    def __get_field_val(self):
+        field = [[0 for x in range(self.size)] for y in range(self.size)]
+        for row in range(self.size):
+            for col in range(self.size):
+                field[row][col] = self.gen_field[row][col]['value']
+
+        return field
+
     def run(self):
         game_field = self.gen_field
 
@@ -143,5 +160,17 @@ class Game:
 
         if self.is_win:
             print('\n CONGRATULATIONS!!!\n You win!')
+            filename = str(uuid.uuid4())
+            file_path = os.path.join(self.save_dir, f'win_{filename}.csv')
+            df = pd.DataFrame(data=self.__get_field_val())
+            with open(file_path, 'w') as f:
+                df.to_csv(file_path, sep=',', index=False)
+                f.close()
         else:
             print('\nYOU LOSE!!!')
+            filename = str(uuid.uuid4())
+            file_path = os.path.join(self.save_dir, f'lose_{filename}.csv')
+            df = pd.DataFrame(data=self.__get_field_val())
+            with open(file_path, 'w') as f:
+                df.to_csv(file_path, sep=',', index=False)
+                f.close()
