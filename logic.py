@@ -1,4 +1,6 @@
 import random
+
+from bot import Bot
 from draw_field import print_game_grid
 import os
 import pandas as pd
@@ -8,7 +10,8 @@ repo_root = os.path.abspath(os.path.join(__file__, os.pardir))
 
 
 class Game:
-    def __init__(self, mines, size):
+    def __init__(self, mode, mines, size):
+        self.mode = mode
         self.mines = mines
         self.size = size
         self.mines_cords = self.__generate_mines_pos(mines, size)
@@ -77,15 +80,15 @@ class Game:
         print_game_grid(field=field, flags=self.flags)
 
     def __player_turn(self, player_x, player_y, flag, field):
+
         if flag == 'Flag':
-            if not field[player_x][player_y]['with_flag'] and self.flags > 0 and not field[player_x][player_y]['visible']:
+            if not field[player_x][player_y]['with_flag'] and self.flags > 0 and not field[player_x][player_y][
+                'visible']:
                 field[player_x][player_y]['repr'] = 'F'
                 field[player_x][player_y]['visible'] = True
                 field[player_x][player_y]['with_flag'] = True
                 self.flags -= 1
                 self.flags_cords.append({'x': player_x, 'y': player_y})
-                if self.flags_cords == self.mines_cords:
-                    self.__win_game(field)
 
             elif field[player_x][player_y]['with_flag']:
                 field[player_x][player_y]['repr'] = self.gen_field[player_x][player_y]['repr']
@@ -104,6 +107,28 @@ class Game:
                 elif field[player_x][player_y]['value'] == 0:
                     vis_cells = []
                     self.__open_neighbours(field, player_x, player_y, vis_cells)
+
+        if self.__compare(self.flags_cords, self.mines_cords):
+            self.__win_game(field)
+
+    def __compare(self, first, second):
+        if len(first) == len(second):
+            counter1 = 0
+            counter2 = 0
+            for el in first:
+                if el in second:
+                    counter1 += 1
+                else:
+                    return False
+
+            for el in second:
+                if el in first:
+                    counter2 += 1
+                else:
+                    return False
+
+            if counter1 == counter2 and counter1 == len(first):
+                return True
 
     def __open_neighbours(self, field, row, col, visited_cells):
         if [row, col] not in visited_cells:
@@ -150,17 +175,25 @@ class Game:
 
     def run(self):
         game_field = self.gen_field
+        is_bot = True if self.mode == '1' else False
+        bot = Bot()
 
         while not self.is_lose and not self.is_win:
             print_game_grid(field=game_field, flags=self.flags)
             print('Enter cords and action (Open or Flag) as X Y Action:', end='\t')
-            player_input = input()
-            player_x, player_y, flag = [val for val in player_input.split()]
+            if is_bot:
+                bot.read_field(game_field, self.flags)
+                player_x, player_y, flag = bot.move()
+                print(player_x, player_y, flag)
+            else:
+                player_input = input()
+                player_x, player_y, flag = [val for val in player_input.split()]
+
             self.__player_turn(int(player_x) - 1, int(player_y) - 1, flag, game_field)
 
         if self.is_win:
             print('\n CONGRATULATIONS!!!\n You win!')
-            filename = str(uuid.uuid4())
+            from logger import filename
             file_path = os.path.join(self.save_dir, f'win_{filename}.csv')
             df = pd.DataFrame(data=self.__get_field_val())
             with open(file_path, 'w') as f:
@@ -168,9 +201,9 @@ class Game:
                 f.close()
         else:
             print('\nYOU LOSE!!!')
-            filename = str(uuid.uuid4())
+            from logger import filename
             file_path = os.path.join(self.save_dir, f'lose_{filename}.csv')
-            df = pd.DataFrame(data=self.__get_field_val())
+            df = pd.DataFrame(data=self.__get_field_val(), )
             with open(file_path, 'w') as f:
                 df.to_csv(file_path, sep=',', index=False)
                 f.close()
