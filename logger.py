@@ -10,7 +10,11 @@ filename = str(uuid.uuid4())
 class Logger(object):
     def __init__(self):
         self.terminal = sys.stdout
-        self.filename = os.path.join(repo_root, '.saves', f'{filename}.txt')
+        self.save_dir = os.path.join(repo_root, '.saves')
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+            os.chmod(self.save_dir, 777)
+        self.filename = os.path.join(self.save_dir, f'{filename}.txt')
 
     def write(self, message):
         self.terminal.write(message)
